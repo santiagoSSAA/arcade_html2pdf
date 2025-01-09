@@ -3,6 +3,7 @@ import os
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
+from dotenv import load_dotenv
 
 class PDFFormat(Enum):
     LETTER = "Letter"
@@ -18,25 +19,26 @@ class PDFFormat(Enum):
     A6 = "A6"
 
 class HTML2PDFAdapter:
-    def __init__(self, api_key: Annotated[str, "API key for HTML2PDF service"] = None):
-        if not api_key:
+    api_key: Annotated[str, "HTML2PDF API key"]
+    base_url: Annotated[str, "HTML2PDF Base Url"] = "https://api.html2pdf.app/v1/generate"
+
+    def __init__(self, arcade_env: str = "~/.arcade/arcade.env"):
+        load_dotenv(arcade_env)
+        self.api_key = os.getenv("HTML2PDF_API_KEY")
+        if not self.api_key:
             raise ValueError("API key must be provided")
-        self.api_key = api_key
-        self.base_url = "https://api.html2pdf.app/v1/generate"
 
     def get_download_folder(self) -> Path:
-        if os.name == 'nt':  # Windows
-            return Path(os.path.join(os.environ['USERPROFILE'], 'Downloads'))
-        elif os.name == 'posix':
-            if 'linux' in os.uname().sysname.lower():  # Linux
-                return Path(os.path.join(os.path.expanduser('~'), 'Downloads'))
-            elif 'darwin' in os.uname().sysname.lower():  # macOS
-                return Path(os.path.join(os.path.expanduser('~'), 'Downloads'))
-        raise EnvironmentError("Unsupported OS")
+        return Path(os.path.expanduser('~/.arcade/'))
 
-    def generate_pdf(self, html_url: Annotated[str, "URL of the HTML to convert to PDF"], format: Annotated[PDFFormat, "PDF format"] = PDFFormat.A4) -> bool:
+    def generate_pdf(
+        self,
+        html_url: Annotated[str, "URL of the HTML to convert to PDF"],
+        format: Annotated[PDFFormat, "PDF format"] = PDFFormat.A4,
+        file_name: Annotated[str, "Name of the PDF file"] = "output"
+    ) -> str:
         if not html_url:
-            raise ValueError("HTML URL must be provided")
+            return "Error: HTML URL must be provided"
 
         params = {
             'html': html_url,
@@ -46,9 +48,12 @@ class HTML2PDFAdapter:
         response = httpx.get(self.base_url, params=params)
         if response.status_code == 200:
             download_folder = self.get_download_folder()
-            pdf_path = download_folder / "output.pdf"
-            with open(pdf_path, 'wb') as pdf_file:
-                pdf_file.write(response.content)
-            return True
-        response.raise_for_status()
-        return False
+            download_folder.mkdir(parents=True, exist_ok=True)
+            pdf_path = download_folder / f"{file_name}.pdf"
+            pdf_path.write_bytes(response.content)
+            if pdf_path.exists():
+                return f"PDF successfully generated at {pdf_path}"
+            else:
+                return "Error: PDF file could not be created"
+        else:
+            return f"Error: Failed to generate PDF, status code {response.status_code}"

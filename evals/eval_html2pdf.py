@@ -6,23 +6,20 @@ from arcade.sdk.eval import (
     tool_eval,
 )
 
-import arcade_html2pdf
+from arcade_html2pdf.tools.adapter import PDFFormat
 from arcade_html2pdf.tools.html2pdf import convert_html_to_pdf
-
-import os
-from dotenv import load_dotenv
-load_dotenv()
-API_KEY = os.getenv("HTML2PDF_API_KEY")
 
 # Evaluation rubric
 rubric = EvalRubric(
     fail_threshold=0.85,
     warn_threshold=0.95,
+    fail_on_tool_selection=True,
+    tool_selection_weight=1.0,
 )
 
 
 catalog = ToolCatalog()
-catalog.add_module(arcade_html2pdf)
+catalog.add_tool(convert_html_to_pdf, "html2pdf")
 
 
 @tool_eval()
@@ -38,15 +35,20 @@ def html2pdf_eval_suite() -> EvalSuite:
         rubric=rubric,
     )
 
+    html_url = "https://docs.arcade-ai.com/home/install/local"
     suite.add_case(
-        name="Downloading Google as PDF",
+        name="Downloading Arcade AI docs as PDF in A4 format",
         user_message=(
-            "I want to download https://www.google.com/ as a PDF file. "
+            f"I want to download {html_url} as a PDF file in A4 format. "
         ),
-        expected_tool_calls=[(convert_html_to_pdf, {"api_key": API_KEY})],
+        expected_tool_calls=[(convert_html_to_pdf, {
+            "html_url": html_url,
+            "format": PDFFormat.A4.value,
+        })],
         rubric=rubric,
         critics=[
-            SimilarityCritic(critic_field="api_key", weight=0.9),
+            SimilarityCritic(critic_field="html_url", weight=0.5),
+            SimilarityCritic(critic_field="format", weight=0.5),
         ]
     )
 
