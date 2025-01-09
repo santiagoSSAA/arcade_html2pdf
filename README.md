@@ -1,6 +1,8 @@
 # html2pdf
 
-Tools to interact with html2pdf api, now Arcade can download webpages as PDFs!
+Tools to interact with the html2pdf API. Now Arcade can download webpages as PDFs!
+
+To use this toolkit, you need an API key from [html2pdf.app](https://html2pdf.app/). Once you have your API key, you can either export it as `HTML2PDF_API_KEY` in your environment variables or save it into `arcade.dev` credentials with the same name.
 
 ## Creating your new toolkit repo
 
